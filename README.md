@@ -64,24 +64,7 @@ L'objectif était de déployer une stack de monitoring complète (Prometheus + G
 
 ## Structure du projet Ansible
 
-```
-Vince_monitoring_ansible/
-├── inventory/
-│   └── hosts.yml          # Serveur IRIS Nice (37.64.159.66:2222)
-├── group_vars/
-│   └── all/
-│       ├── vars.yml       # Variables globales (ports, versions)
-│       └── vault.yml      # Secrets chiffrés (Ansible Vault AES-256)
-├── roles/
-│   ├── monitoring/        # Prometheus + Grafana + Loki + Promtail
-│   │   ├── tasks/
-│   │   ├── templates/     # prometheus.yml.j2, loki-config.yml.j2
-│   │   └── handlers/      # Restart handlers
-│   └── wireguard/         # VPN WireGuard
-│       ├── tasks/
-│       └── templates/     # wg0.conf.j2
-└── main.yml               # Playbook principal
-```
+![Structure projet Ansible](assets/project_structure.svg)
 
 ---
 
