@@ -27,24 +27,7 @@ L'objectif était de déployer une stack de monitoring complète (Prometheus + G
 
 ## Architecture déployée
 
-```
-[Poste admin — Ansible Controller]
-         |
-         | SSH :2222 (clé RSA)
-         |
-[Serveur IRIS — 37.64.159.66]
-         |
-    ┌────┴─────────────────────┐
-    |                          |
-[Stack Monitoring]    [Services réseau]
-    |                          |
-  Prometheus              WireGuard VPN
-  Grafana                 Active Directory
-  Loki                    (gestion comptes)
-  Promtail
-  Node Exporter
-  cAdvisor
-```
+![Architecture Ansible](assets/network_architecture.svg)
 
 ---
 
