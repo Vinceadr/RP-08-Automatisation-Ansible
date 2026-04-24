@@ -1,0 +1,40 @@
+---
+# playbooks/patch-management.yml - MAJ securite coordonnees multi-OS
+# Auteur : ANDREO Vincent - BTS SIO SISR - IRIS Nice - V1.0 mars 2026
+- name: Patch Management - MAJ securite
+  hosts: all
+  serial: 1
+  pre_tasks:
+  - name: Snapshot KVM pre-patch
+    community.libvirt.virt:
+      name: "{{ inventory_hostname }}"
+      command: snapshot
+      snapshot_name: "pre-patch-{{ ansible_date_time.date }}"
+    when: inventory_hostname in groups['linux']
+    delegate_to: SRV-KVM
+  tasks:
+  - name: MAJ Linux apt dist-upgrade
+    ansible.builtin.apt:
+      update_cache: yes
+      upgrade: dist
+    when: inventory_hostname in groups['linux']
+  - name: Check reboot Linux
+    ansible.builtin.shell: |
+      if [ -f /var/run/reboot-required ]; then echo REBOOT; else echo OK; fi
+    register: rb
+    changed_when: false
+    when: inventory_hostname in groups['linux']
+  - name: Reboot Linux si requis
+    ansible.builtin.reboot:
+      reboot_timeout: 600
+    when: inventory_hostname in groups['linux'] and rb.stdout == 'REBOOT'
+  - name: MAJ Windows SecurityUpdates
+    community.windows.win_updates:
+      category_names: [SecurityUpdates, CriticalUpdates]
+      state: installed
+    when: inventory_hostname in groups['windows']
+    register: wu
+  - name: Reboot Windows si requis
+    ansible.windows.win_reboot:
+      reboot_timeout: 900
+    when: inventory_hostname in groups['windows'] and wu.reboot_required|default(false)

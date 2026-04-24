@@ -1,0 +1,40 @@
+---
+# roles/monitoring/tasks/main.yml - Stack monitoring IRIS Nice (8 services Docker)
+# Auteur : ANDREO Vincent - BTS SIO SISR - IRIS Nice - V1.0 mars 2026
+- name: Create monitoring directory
+  ansible.builtin.file:
+    path: /home/vincent/monitoring
+    state: directory
+    mode: '0755'
+    owner: vincent
+    group: vincent
+- name: Create Docker network (10.14.7.0/24)
+  community.docker.docker_network:
+    name: monitoring-network
+    driver: bridge
+    ipam_config: [{subnet: 10.14.7.0/24}]
+    state: present
+- name: Copy .env via Ansible Vault
+  ansible.builtin.copy:
+    content: |
+      GF_SECURITY_ADMIN_PASSWORD={{ vault_grafana_admin_password }}
+      GF_INSTALL_PLUGINS=grafana-piechart-panel
+      PROMETHEUS_RETENTION=30d
+      LOKI_RETENTION=7d
+    dest: /home/vincent/monitoring/.env
+    mode: '0600'
+  no_log: True
+- name: Sync configs (rsync delta)
+  ansible.posix.synchronize:
+    src: files/monitoring/
+    dest: /home/vincent/monitoring/
+    archive: yes
+    delete: yes
+    rsync_opts: ['--chown=vincent:vincent','--exclude=.env']
+- name: Deploy docker-compose V2
+  community.docker.docker_compose_v2:
+    project_src: /home/vincent/monitoring/
+    project_name: monitoring
+    state: present
+    pull: always
+    recreate: smart

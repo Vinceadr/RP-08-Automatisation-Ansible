@@ -1,0 +1,37 @@
+---
+# playbooks/conformite.yml - Audit securite (check_mode uniquement, 0 modification)
+# Auteur : ANDREO Vincent - BTS SIO SISR - IRIS Nice - V1.0 mars 2026
+- name: Conformite - Audit securite
+  hosts: all
+  gather_facts: yes
+  tasks:
+  - name: Linux - SSH PermitRootLogin no
+    ansible.builtin.lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: "^PermitRootLogin"
+      line: "PermitRootLogin no"
+    check_mode: yes
+    register: ssh_chk
+    when: inventory_hostname in groups['linux']
+  - name: Linux - UFW actif
+    community.general.ufw:
+      state: enabled
+    check_mode: yes
+    when: inventory_hostname in groups['linux']
+  - name: Windows - Defender actif
+    community.windows.win_shell: Get-MpComputerStatus | Select RealTimeProtectionEnabled
+    register: defender
+    when: inventory_hostname in groups['windows']
+  - name: Windows - SMBv1 desactive
+    community.windows.win_shell: Get-SmbServerConfiguration | Select EnableSMB1Protocol
+    register: smbv1
+    when: inventory_hostname in groups['windows']
+  - name: Rapport conformite
+    copy:
+      content: |
+        # Conformite {{ ansible_date_time.iso8601 }}
+        SSH PermitRootLogin: {{ 'OK' if not ssh_chk.changed|default(false) else 'KO' }}
+        Defender: {{ defender.stdout|default('N/A') }}
+        SMBv1: {{ smbv1.stdout|default('N/A') }}
+      dest: "/tmp/conformite-{{ ansible_date_time.date }}.yml"
+    delegate_to: localhost

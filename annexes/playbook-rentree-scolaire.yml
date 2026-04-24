@@ -1,0 +1,36 @@
+---
+# playbooks/rentree-scolaire.yml - Rentree scolaire: comptes AD iris.lan + VMs KVM
+# Auteur : ANDREO Vincent - BTS SIO SISR - IRIS Nice - V1.0 mars 2026
+- name: Rentree Scolaire - Comptes AD + VMs
+  hosts: windows
+  gather_facts: yes
+  vars:
+    csv_file: /tmp/etudiants.csv
+    ad_base_ou: "OU=Etudiants,DC=iris,DC=lan"
+  tasks:
+  - name: Lecture CSV
+    community.general.read_csv:
+      path: "{{ csv_file }}"
+      fieldnames: prenom,nom,classe,groupe_ad
+    register: etudiants
+    delegate_to: localhost
+  - name: Creation OUs
+    community.windows.win_domain_ou:
+      name: "{{ item.groupe_ad }}"
+      path: "{{ ad_base_ou }}"
+      state: present
+    loop: "{{ etudiants.list | unique(attribute='groupe_ad') }}"
+  - name: Creation comptes AD (MDP aleatoire)
+    community.windows.win_domain_user:
+      name: "{{ item.prenom|lower }}.{{ item.nom|lower }}"
+      password: "{{ lookup('password','/tmp/pwd_'+item.prenom+'.'+item.nom+' length=12') }}"
+      state: present
+      email: "{{ item.prenom|lower }}.{{ item.nom|lower }}@iris.lan"
+      groups: [Domain Users, "{{ item.groupe_ad }}"]
+    loop: "{{ etudiants.list }}"
+    register: ad_users
+  - name: Rapport YAML
+    copy:
+      content: "# Rapport Rentree {{ ansible_date_time.iso8601 }}\nComptes: {{ ad_users.results|length }}"
+      dest: "/tmp/rapport_rentree_{{ ansible_date_time.date }}.yml"
+    delegate_to: localhost
